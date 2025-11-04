@@ -8,3 +8,7 @@ Decibel est en collab avec Aptos Labs, au début d'année la Aptos Foundation a 
 Discord (6200 membres) : https://discord.gg/decibel 
 X (5400 membres) : https://x.com/DecibelTrade?t=cqj2z1eV2aBZoyy6AOSHag&s=09
 Waitlist: https://decibel.trade/
+
+git add .
+git commit -m "Ajout du suivi Talent Protocol"
+git push origin feature/talent-protocol
