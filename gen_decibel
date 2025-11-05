@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+# Génère un fichier docs/decibel_status.md contenant le bloc projet Aptos Decibel
+
+from datetime import datetime
+from pathlib import Path
+
+# Configuration
+project_name = "Aptos Decibel"
+tagline = "Perps Yields Unified Trading Engine"
+waitlist_url = "https://decibel.trade/"
+discord_url = "https://discord.gg/decibel"
+x_url = "https://x.com/DecibelTrade?t=cqj2z1eV2aBZoyy6AOSHag&s=09"
+discord_count = 6200
+x_count = 5400
+testnet_target = "Q4 2025"
+app_launch_target = "Q1 2026"
+backing = "Aptos Labs / Aptos Foundation (programme d'investissement)"
+notes = "Phase de développement. Se positionner early avant testnet."
+
+OUT_DIR = Path("docs")
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+OUT_FILE = OUT_DIR / "decibel_status.md"
+
+template = f"""---
+title: {project_name}
+generated_at: {datetime.utcnow().isoformat()}Z
+---
+
+# 🚀 {project_name}
+
+**{tagline}**
+
+**Waitlist**: {waitlist_url}  
+**Discord**: {discord_url} ({discord_count} membres)  
+**X**: {x_url} ({x_count} abonnés)
+
+**Testnet prévu**: {testnet_target}  
+**Lancement application**: {app_launch_target}
+
+**Soutien**: {backing}
+
+**Résumé**  
+{notes}
+
+---
+
+*Bloc généré automatiquement par scripts/gen_decibel_status.py*
+"""
+
+with open(OUT_FILE, "w", encoding="utf-8") as f:
+    f.write(template)
+
+print(f"Fichier généré: {OUT_FILE}")
+
+name: update_decibel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Run generator
+        run: |
+          python3 scripts/gen_decibel_status.py
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/decibel_status.md
+          git commit -m "Update Aptos Decibel status" || echo "no changes to commit"
+          git push origin HEAD:feature/talent-protocol
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+---
+title: Aptos Decibel
+generated_at: 0000-00-00T00:00:00Z
+---
+
+# 🚀 Aptos Decibel
+
+**Perps Yields Unified Trading Engine**
+
+**Waitlist**: https://decibel.trade/  
+**Discord**: https://discord.gg/decibel (6200 membres)  
+**X**: https://x.com/DecibelTrade?t=cqj2z1eV2aBZoyy6AOSHag&s=09 (5400 abonnés)
+
+**Testnet prévu**: Q4 2025  
+**Lancement application**: Q1 2026
+
+**Soutien**: Aptos Labs / Aptos Foundation (programme d'investissement)
+
+**Résumé**  
+Phase de développement. Se positionner early avant testnet.
+
+---
+
+*Bloc généré automatiquement par scripts/gen_decibel_status.py*
