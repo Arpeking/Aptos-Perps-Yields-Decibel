@@ -1,0 +1,82 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol"; import "@openzeppelin/contracts/token/ERC20/IERC20.sol"; import "@openzeppelin/contracts/security/ReentrancyGuard.sol"; import "@openzeppelin/contracts/access/Ownable.sol";
+
+interface IWETH {
+function deposit() external payable;
+function withdraw(uint256) external;
+function balanceOf(address) external view returns (uint256);
+}
+
+contract ScrollVaultUSDCETH is ERC20, ReentrancyGuard, Ownable {
+IERC20 public immutable usdc;
+IWETH public immutable weth;
+
+uint256 public totalUsdcDeposited;
+uint256 public totalEthDeposited;
+
+event Deposit(address indexed user, uint256 usdcAmount, uint256 ethAmount, uint256 sharesMinted);
+event Withdraw(address indexed user, uint256 usdcAmount, uint256 ethAmount, uint256 sharesBurned);
+
+constructor(address _usdc, address _weth) ERC20("Scroll USDC-ETH Vault", "SCROLLVAULT") Ownable(msg.sender) {
+    usdc = IERC20(_usdc);
+    weth = IWETH(_weth);
+}
+
+// Dépôt en USDC et ETH (ETH est wrapé en WETH)
+function deposit(uint256 usdcAmount, uint256 ethAmount) external payable nonReentrant {
+    require(usdcAmount > 0 || ethAmount > 0, "Montant nul");
+    
+    // Transfer USDC
+    if (usdcAmount > 0) {
+        require(usdc.transferFrom(msg.sender, address(this), usdcAmount), "Transfer USDC échoué");
+        totalUsdcDeposited += usdcAmount;
+    }
+    
+    // Wrap ETH en WETH
+    if (ethAmount > 0) {
+        require(msg.value >= ethAmount, "ETH insuffisant");
+        weth.deposit{value: ethAmount}();
+        totalEthDeposited += ethAmount;
+    }
+    
+    // Calcul des shares (proportionnel au total TVL)
+    uint256 totalTvl = totalUsdcDeposited + totalEthDeposited;
+    uint256 shares = totalTvl > 0 ? (usdcAmount + ethAmount) * totalSupply() / totalTvl : (usdcAmount + ethAmount);
+    _mint(msg.sender, shares);
+    
+    emit Deposit(msg.sender, usdcAmount, ethAmount, shares);
+}
+
+// Retrait proportionnel (simplifié : retire tout ou rien ; adaptez pour partiel)
+function withdraw(uint256 sharesAmount) external nonReentrant {
+    require(sharesAmount > 0, "Shares nul");
+    require(balanceOf(msg.sender) >= sharesAmount, "Shares insuffisants");
+    
+    uint256 totalTvl = totalUsdcDeposited + totalEthDeposited;
+    uint256 usdcWithdraw = (sharesAmount * totalUsdcDeposited) / totalSupply();
+    uint256 ethWithdraw = (sharesAmount * totalEthDeposited) / totalSupply();
+    
+    _burn(msg.sender, sharesAmount);
+    totalUsdcDeposited -= usdcWithdraw;
+    totalEthDeposited -= ethWithdraw;
+    
+    // Transfer USDC
+    require(usdc.transfer(msg.sender, usdcWithdraw), "Transfer USDC échoué");
+    
+    // Unwrap et transfer ETH
+    weth.withdraw(ethWithdraw);
+    payable(msg.sender).transfer(ethWithdraw);
+    
+    emit Withdraw(msg.sender, usdcWithdraw, ethWithdraw, sharesAmount);
+}
+
+// Vues
+function getTvl() external view returns (uint256 usdcTvl, uint256 ethTvl) {
+    return (totalUsdcDeposited, totalEthDeposited);
+}
+
+// Pour recevoir ETH (du unwrap)
+receive() external payable {}
+}
